@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlasterAcademy.com</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            text-align: center;
+            overflow-x: hidden;
+        }
+
+        h1, p {
+            margin-top: 20px;
+            color: #fff;
+            text-shadow: 0 0 10px #fff;
+        }
+
+        #game-container {
+            position: relative;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 1200px;
+            height: calc(100vh - 200px);
+            border: 2px solid #fff;
+            background: linear-gradient(135deg, #000, #111);
+            overflow: hidden;
+            cursor: crosshair;
+            box-shadow: 0 0 20px #fff;
+        }
+
+        .target {
+            width: 60px;
+            height: 60px;
+            background-color: #fff;
+            border: 2px solid #000;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        .miss-dot {
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+            box-shadow: 0 0 10px red;
+        }
+
+        .button {
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #000;
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            text-shadow: 0 0 5px #fff;
+            transition: all 0.3s ease;
+            display: block;
+            text-align: center;
+            width: 150px;
+        }
+
+        .button:hover {
+            background-color: #fff;
+            color: #000;
+            text-shadow: none;
+        }
+
+        #score, #timer, #high-score {
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+
+        #mode-buttons {
+            margin-top: 20px;
+        }
+
+        #play-again {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #volume-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+        }
+
+        #volume-slider {
+            margin-left: 10px;
+            width: 200px;
+        }
+
+        @media (max-width: 768px) {
+            #game-container {
+                height: calc(100vh - 300px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>BlasterAcademy.com</h1>
+    <p id="message">
+        <h4>Welcome to Blaster Academy! Here, you'll put your precision and accuracy to the ultimate test by blasting targets as fast and as accurately as possible. The game will analyze your skills to determine if you're better than the average Stormtrooper as seen in Star Wars. Are you ready to grab your blaster, aim true, and show the galaxy what you’re made of? Let the blasting begin!</h4></p>
+    <button id="next-button" class="button">Next</button>
+    <div id="mode-buttons" style="display: none;">
+        <p>Select your difficulty:</p>
+        <button id="easy-mode" class="button">Easy Mode</button>
+        <button id="hard-mode" class="button">Hard Mode</button>
+    </div>
+    <div id="timer" style="display: none;"></div>
+    <div id="game-container" style="display: none;"></div>
+    <div id="score" style="display: none;"></div>
+    <div id="high-score" style="display: none;">High Score: 0</div>
+    <button id="play-again" class="button">Play Again</button>
+
+    <!-- Volume Controls -->
+    <div id="volume-controls" style="display: none;">
+        <label for="volume-slider">Music Volume:</label>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+    </div>
+
+    <!-- Sound Effects -->
+    <audio id="hit-sound" src="hit.mp3"></audio>
+    <audio id="miss-sound" src="miss.mp3"></audio>
+
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+        <source src="https://kappa.vgmsite.com/soundtracks/geometry-dash/nczpxxtrfj/1-09.%20Time%20Machine.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const nextButton = document.getElementById('next-button');
+        const modeButtons = document.getElementById('mode-buttons');
+        const easyModeButton = document.getElementById('easy-mode');
+        const hardModeButton = document.getElementById('hard-mode');
+        const message = document.getElementById('message');
+        const gameContainer = document.getElementById('game-container');
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const playAgainButton = document.getElementById('play-again');
+        const highScoreDisplay = document.getElementById('high-score');
+        const hitSound = document.getElementById('hit-sound');
+        const missSound = document.getElementById('miss-sound');
+        const backgroundMusic = document.getElementById('background-music');
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeControls = document.getElementById('volume-controls');
+
+        let gameInterval;
+        let despawnTimeout;
+        let targetMovementInterval;
+        let score = 0;
+        let missedShots = 0;
+        let highScore = 0;
+        const gameTime = 30;
+        let remainingTime = gameTime;
+        let mode = 'hard';
+        let targetSpeed = 5;
+
+        volumeSlider.addEventListener('input', () => {
+            backgroundMusic.volume = volumeSlider.value;
+        });
+
+        nextButton.addEventListener('click', () => {
+            message.textContent = 'Choose your difficulty: Easy or Hard.';
+            nextButton.style.display = 'none';
+            modeButtons.style.display = 'block';
+        });
+
+        easyModeButton.addEventListener('click', () => startGame('easy'));
+        hardModeButton.addEventListener('click', () => startGame('hard'));
+        playAgainButton.addEventListener('click', restartGame);
+
+        function startGame(selectedMode) {
+            mode = selectedMode;
+            score = 0;
+            missedShots = 0;
+            remainingTime = gameTime;
+
+            scoreDisplay.textContent = `Score: 0 | Missed Shots: 0`;
+            timerDisplay.textContent = `Time Left: ${remainingTime}s`;
+            highScoreDisplay.textContent = `High Score: ${highScore}`;
+            highScoreDisplay.style.display = 'block';
+            volumeControls.style.display = 'block';
+            message.style.display = 'none';
+            modeButtons.style.display = 'none';
+            gameContainer.style.display = 'block';
+            timerDisplay.style.display = 'block';
+            scoreDisplay.style.display = 'block';
+            playAgainButton.style.display = 'none';
+
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.volume = volumeSlider.value;
+            backgroundMusic.play();
+
+            gameContainer.addEventListener('click', trackMissedShots);
+            gameInterval = setInterval(updateTimer, 1000);
+            spawnTarget();
+        }
+
+        function spawnTarget() {
+            removeExistingTarget();
+            const target = document.createElement('div');
+            target.classList.add('target');
+
+            let x = Math.random() * (gameContainer.offsetWidth - 60);
+            let y = Math.random() * (gameContainer.offsetHeight - 60);
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+
+            gameContainer.appendChild(target);
+
+            target.addEventListener('click', (e) => {
+                score++;
+                hitSound.play();
+                scoreDisplay.textContent = `Score: ${score} | Missed Shots: ${missedShots}`;
+                gameContainer.removeChild(target);
+                clearTimeout(despawnTimeout);
+                spawnTarget();
+            });
+
+            if (mode === 'hard') {
+                let dx = targetSpeed * (Math.random() > 0.5 ? 1 : -1);
+                let dy = targetSpeed * (Math.random() > 0.5 ? 1 : -1);
+
+                targetMovementInterval = setInterval(() => {
+                    x += dx;
+                    y += dy;
+
+                    if (x <= 0 || x >= gameContainer.offsetWidth - 60) dx *= -1;
+                    if (y <= 0 || y >= gameContainer.offsetHeight - 60) dy *= -1;
+
+                    target.style.left = `${x}px`;
+                    target.style.top = `${y}px`;
+                }, 20);
+            }
+
+            despawnTimeout = setTimeout(() => {
+                if (gameContainer.contains(target)) {
+                    gameContainer.removeChild(target);
+                    spawnTarget();
+                }
+            }, 2000);
+        }
+
+        function removeExistingTarget() {
+            const existingTarget = document.querySelector('.target');
+            if (existingTarget) gameContainer.removeChild(existingTarget);
+            clearInterval(targetMovementInterval);
+        }
+
+        function trackMissedShots(event) {
+            if (!event.target.classList.contains('target')) {
+                missedShots++;
+                missSound.play();
+
+                const missDot = document.createElement('div');
+                missDot.classList.add('miss-dot');
+
+                const rect = gameContainer.getBoundingClientRect();
+                missDot.style.left = `${event.clientX - rect.left}px`;
+                missDot.style.top = `${event.clientY - rect.top}px`;
+
+                gameContainer.appendChild(missDot);
+                scoreDisplay.textContent = `Score: ${score} | Missed Shots: ${missedShots}`;
+                setTimeout(() => gameContainer.removeChild(missDot), 1000);
+            }
+        }
+
+        function updateTimer() {
+            remainingTime--;
+            timerDisplay.textContent = `Time Left: ${remainingTime}s`;
+
+            if (remainingTime <= 0) endGame();
+        }
+
+        function endGame() {
+            clearInterval(gameInterval);
+            removeExistingTarget();
+            backgroundMusic.pause();
+            gameContainer.removeEventListener('click', trackMissedShots);
+
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+
+            message.textContent = `Game Over! Your score: ${score}. Missed shots: ${missedShots}.`;
+            message.style.display = 'block';
+            playAgainButton.style.display = 'block';
+            timerDisplay.style.display = 'none';
+            scoreDisplay.style.display = 'none';
+            gameContainer.style.display = 'none';
+        }
+
+        function restartGame() {
+            message.textContent = 'Choose your difficulty: Easy or Hard.';
+            message.style.display = 'block';
+            playAgainButton.style.display = 'none';
+            gameContainer.style.display = 'none';
+            timerDisplay.style.display = 'none';
+            scoreDisplay.style.display = 'none';
+            volumeControls.style.display = 'none';
+            modeButtons.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

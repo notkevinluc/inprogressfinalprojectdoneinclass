@@ -1,0 +1,43 @@
+body {
+    background-color: rgb(124, 219, 124);
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+.common {
+    border: 3px solid rgb(124, 219, 124);
+    position: absolute;
+}
+.header {
+    top: 5px;
+    left: 1px;
+    right: 1px;
+    height: 125px;
+    z-index: 2;
+    border-bottom: solid 3px black;
+}
+.headerlogo {
+    float: inline-start;
+}
+.headertitle{
+    text-align-last: center;
+}
+.headerreferencelinks {
+    float: right;
+}
+
+.leftmenu {
+    top: 133px;
+    left: 5px;
+    width: 120px;
+    bottom: 0px;
+    z-index: 1;
+    padding-top: 10px;
+    border-right: solid 3px black;
+}
+
+.mainbody {
+    top: 125px;
+    left: 125px;
+    right: 125px;
+    bottom: 0px;
+    padding-left: 10px;
+}
